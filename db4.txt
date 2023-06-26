@@ -1,0 +1,241 @@
+ID - код по магазину
+Produce - название продукта
+Material – материал
+Color – цвет
+Size – размер
+Country -  страна производитель
+ID_salespeople - код поставщика товара
+Price - цена за штуку
+Count - количество штук
+REM - ремарки
+
+========================================================================
+
+Почему в ДЗ так много Украины? И валюта зачем-то гривны. Исправила всё на рубли, не хочу решать задачи в гривнах.
+
+
+1. Определите для какого товара код поставщика не определен. (полностью вся табл., переименованные атрибуты)
+
+SELECT *
+FROM Ware
+WHERE ID_salespeople IS NULL
+
+
+2. Определить все товары, которые производятся на Украине (марка (название продукта), код поставщика товара, страна)
+
+SELECT Produce, ID_salespeople, Country
+FROM Ware
+WHERE Country IS 'Украина'
+
+
+3. Удалите из таблицы все товары, которые произведены в Германии
+
+DELETE
+FROM Ware
+WHERE Country = 'Германия'
+
+
+4. Замените страну-производителя Польшу на Россию (код поставщика, товар (название продукта), страна, описание товара).
+
+UPDATE Ware
+SET Country = 'Россия'
+WHERE Country = 'Польша';
+SELECT ID_salespeople, Produce, Country,
+Material, Color, Size
+FROM Ware
+Where Country IS 'Россия'
+
+
+5. Восстановите строки, удаленные в 3 пункте
+Тут я не знаю, что делать. Нашла команды для восстановления данных из нескольких шагов. Но это не сработало
+Картинка со строками, которые надо восстановить у меня не открылась, просто рамочка и внутри пусто (((
+Или в этом задании просто нужно два раза нажать Ctrl+Z
+    1.
+SELECT *
+FROM Ware
+    2.
+USE Databasename
+GO
+BACKUP LOG [Databasename]
+TO DISK = N’D:\Databasename\RDDTrLog.trn’
+WITH NOFORMAT, NOINIT,
+NAME = N’Ware-Transaction Log Backup’,
+SKIP, NOREWIND, NOUNLOAD, STATS = 10
+GO
+    3.
+USE Databasename
+GO
+Select [Current LSN] LSN], [Transaction ID], Operation, Context, AllocUnitName
+FROM
+fn_dblog(NULL, NULL)
+WHERE Operation  = 'LOP_DELETE_ROWS'
+    4.
+USE Databasename
+GO
+SELECT
+[Current LSN], Operation, [Transaction ID], [Begin Time], [Transaction Name], [Transaction SID]
+FROM
+fn_dblog(NULL, NULL)
+WHERE
+[Transaction ID] = ‘000:000001f3′
+AND
+[Operation] = ‘LOP_BEGIN_XACT’
+    5.
+Recover Deleted D USE Databasename
+GO
+RESTORE DATABASE Databasename_COPY FROM
+DISK = ‘D:\Databasename\RDDFull.bak’
+WITH
+MOVE ‘Databasename’ TO ‘D:\RecoverDB\Databasename.mdf’,
+MOVE ‘Databasename_log’ TO ‘D:\RecoverDB\Databasename_log.ldf’,
+REPLACE, NORECOVERY;
+GO
+    6.
+USE  Databasename
+GO
+RESTORE LOG Databasename_COPY FROM DISK = N'D:DatabasenameRDOTrLog.trn'
+WITH STOPBEFOREMARK = ‘lsn:0x00000020:000001d0:0001'
+Note: Since LSN values are in Hexadecimal form and for restoring tables
+using this LSN, we need to convert it into decimal form. For this purpose,
+we add 0x just before the LSN as shown above.
+    7.
+USE Databasename_Copy GO Select * from Table_name
+
+
+6. Выведите весь товар, который не черного цвета (продукт, цену, код продукта)
+
+SELECT Produce, Price, ID_salespeople
+FROM Ware
+WHERE Color <> 'ч'      # или 'ч%',  если чёрно-серый это как бы тоже чёрный
+
+
+7. Вставьте строку NTC-117BK Micro Camera Case, нейлон, ч, 13,3x8,3x5,7, 2016, Украина, 1046
+тут колонки rem, страна и id перепутаны, это так специально сделано? Я поменяла порядок, чтобы соответствовало таблице
+
+INSERT INTO Ware (ID, Produce, Material, Color, Size, Country, ID_salespeople, Price, REM)
+VALUES (1236, 'NTC-117BK', 'нейлон', 'ч', '13,3x8,3x5,7', 'Украина', 2016, 1046, 'Micro Camera Case')
+
+
+8. Вставьте строку POC-463BK	Compact Camera Case, полиэстер, ч, 11x7x4,5, остальные данные не определены.
+
+INSERT INTO Ware (ID, Produce, Material, Color, Size)
+VALUES (1237, 'POC-463BK Compact Camera Case', 'полиэстер', 'ч', '11x7x4,5')
+
+только на 17 задании поняла, что здесь ошиблась. исправляю. Compact Camera Case относится к столбцу REM
+
+INSERT INTO Ware (ID, Produce, Material, Color, Size, REM)
+VALUES (1237, 'POC-463BK', 'полиэстер', 'ч', '11x7x4,5', 'Compact Camera Case')
+
+
+9. Вывести весь товар, который поставляет продавец с кодом 2065 из России
+тут не понятно, вывести всю строку или только Produce
+
+SELECT *     # Produce, если имеется в виду "весь товар" это название товара. Или Produce  плюс другие колонки, например цвет, размер
+FROM Ware
+WHERE ID_salespeople = 2065 AND Country = 'Россия'
+
+
+10. Вывести товар, цена за который находится в диапазоне от 200 до 345
+
+SELECT *
+FROM Ware
+WHERE Price BETWEEN 200 AND 345     # Проверила, что 345 тоже попадает в выборку данных.
+                                    Сначала поставила 346, т.к. в лекции вы говорили, что последнее число не считается и нужно писать на 1 больше
+                                    Или это было про буквы... но всё равно если бы в таблице была цена 345, то она тоже попала бы в нужный нам диапазон
+
+
+11. Определите все сумки из кожи с размером не менее 40х30х5
+
+SELECT *
+FROM Ware
+WHERE Material = 'кожа' AND Size >= '40x30x5'
+
+
+12. Написать запрос, который выводит все сумки и коды их поставщиков, если товара меньше чем на 1200 руб.
+вот так код работает, нужные строки целиком выводятся на экран. но нам нужны только две колонки
+SELECT *
+FROM Ware
+WHERE (Price * Count) < 1200
+
+а вот так выдаёт ошибку:
+[23:24:52] Ошибка при выполнении SQL запроса к базе данных 'db_4': 1st ORDER BY term out of range - should be between 1 and 2
+
+SELECT Produce, ID_salespeople
+FROM Ware
+WHERE (Price * Count) < 1200
+
+
+13. Написать запрос, который заменит код поставщика на 2000, если на складе хранится товара менее чем на 500 руб. По данному поставщику.
+
+UPDATE Ware
+SET ID_salespeople = 2000
+WHERE (Price * Count) < 500
+
+
+14. Вывести все кожаные сумки, количество которых менее 5 шт. и общая сумма товара не превышает 450 руб.
+подозрительно низкая цена у кожаных сумок ))) скорее всего обманывают
+
+SELECT *
+FROM Ware
+WHERE Material IS 'кожа' AND Count < 5 AND (Price * Count) <= 450
+
+
+15. Напишите запрос, который выведет все нейлоновые сумки, цена на которые не превышает 250 руб.
+
+SELECT *
+FROM Ware
+WHERE Material IS 'нейлон' AND Price <= 250
+
+
+16. Замените материал нейлон на брезент, если сумка стоит менее 200 руб.
+вот тут абсолютно согласна, такие дешевые сумки только из брезента и шьют))) почти все наши кожаные сумочки попадают под это условие. обман раскрыт!
+
+UPDATE Ware
+SET Material = 'брезент'
+WHERE Material IS 'нейлон' AND Price < 200
+
+
+17. Напишите запрос, который выводит все сумки, у которых есть косметички.
+
+SELECT *
+FROM Ware
+WHERE REM LIKE '%косметичка'
+
+
+18. Напишите запрос, который покажет все кожаные сумки черного цвета китайского производства.
+
+SELECT *
+FROM Ware
+WHERE Material IS 'кожа' AND Color IS 'ч' AND Country IS 'Китай'
+
+
+19. Напишите запрос, который покажет все сумки с размером более 15 дюймов.
+Тут сомнения в правильности моего решения, но из 37 строк показались 35.
+
+SELECT *
+FROM Ware
+WHERE Size > '15x15x15'
+
+
+20. Напишите запрос, который покажет всех поставщиков сумок не черного цвета.
+
+SELECT ID_salespeople
+FROM Ware
+WHERE Color <> 'ч'
+вот такая ошибка [21:49:32] Ошибка при выполнении SQL запроса к базе данных 'db_4': 1st ORDER BY term out of range - should be between 1 and 1
+при этом в 6 задании подобный код сработал
+
+
+21. Замените материал полиэстер у сумок китайского производства на нейлон
+
+UPDATE Ware
+SET Material = 'нейлон'
+WHERE Country IS 'Китай' AND Material IS 'полиэстер'
+
+
+22. В записях с кодом товара: 1015, 1041, 1032, 1010 материал нейлон заменить на полиэстер если страна-производитель Китай.
+
+UPDATE Ware
+SET Material = 'полиэстер'
+WHERE ID IN (1015, 1041, 1032, 1010)
+AND Country = 'Китай' AND Material = 'нейлон'
